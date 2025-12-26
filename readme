@@ -1,6 +1,11 @@
-1. to install the 
-```
-conda install conda-forge::warp-lang=*=*cuda126*
-```
-
-
+## Installation
+- The code assumes nerd stuff works
+  ```
+  conda create -n warp python=3.8.20
+  conda activate warp
+  ```
+- Install [PyTorch 2.2.2](https://pytorch.org/get-started/previous-versions/#linux-and-windows-14) (the tested version)
+- Install other depandent packages:
+  ```
+  pip install -r requirements.txt
+  ```
