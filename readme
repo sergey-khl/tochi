@@ -1,0 +1,6 @@
+1. to install the 
+```
+conda install conda-forge::warp-lang=*=*cuda126*
+```
+
+
