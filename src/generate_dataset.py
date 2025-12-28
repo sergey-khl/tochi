@@ -19,7 +19,9 @@ wp_state = env.model.state()
 wp_next_state = env.model.state()
 wp_control = env.model.control()
 
-# for i in range(trajectory_length):
-while True:
+for i in range(trajectory_length):
+# while True:
     env.render()
     env.step(wp_state, wp_next_state, wp_control)
+
+env.stop()

@@ -31,24 +31,48 @@ class Environment:
 
         self.model = self.init_model()
         self.integrator = self.init_integrator()
-        self.renderer = wp.sim.render.SimRendererOpenGL(
-            self.model,
-            "cube toss",
-            up_axis=self.up_axis,
-            show_rigid_contact_points=True,
-            contact_points_radius=1e-3,
-            show_joints=True,
-        )
+        self.renderer = self.init_renderer()
+
+    """
+    cpu use USDRenderer and GPU use OpenGL
+    """
+    def init_renderer(self):
+        if self.device == "cpu":
+            return wp.sim.render.SimRendererUsd(
+                self.model,
+                "cube_toss.usd",
+                # up_axis=self.up_axis,
+                # show_rigid_contact_points=True,
+                # contact_points_radius=1e-3,
+                # show_joints=True,
+            )
+        else:
+            return wp.sim.render.SimRendererOpenGL(
+                self.model,
+                "cube toss",
+                up_axis=self.up_axis,
+                show_rigid_contact_points=True,
+                contact_points_radius=1e-3,
+                show_joints=True,
+            )
 
     """
     this is the thing that actually solves the dynamics
     """
     def init_integrator(self):
-        return wp.sim.FeatherstoneIntegrator(
-            self.model, {
-                "update_mass_matrix_every": self.sim_substeps
-            }
-        )
+        if self.device == "cpu":
+            # return wp.sim.XPBDIntegrator()
+            return wp.sim.FeatherstoneIntegrator(
+                self.model, {
+                    "update_mass_matrix_every": self.sim_substeps
+                }
+            )
+        else:
+            return wp.sim.FeatherstoneIntegrator(
+                self.model, {
+                    "update_mass_matrix_every": self.sim_substeps
+                }
+            )
 
     """
     setup of the environment. adds the cube and table.
@@ -142,3 +166,11 @@ class Environment:
             )
             self.renderer.render(render_state)
             self.renderer.end_frame()
+
+                
+    """
+    cleanup
+    """
+    def stop(self,):
+        if self.device == "cpu":
+            self.renderer.save()
