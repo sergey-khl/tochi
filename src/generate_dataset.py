@@ -28,14 +28,10 @@ dataset = RealTossesDataset(data_path)
 
 for i in range(len(dataset)):
     trajectory = dataset[i]
-    for sample in trajectory['full_state']:
-        wp_state = env.state
-        
-        env.set_torch_state(sample)
-        wp_next_state = env.state
-        wp_control = env.control
+    for curr_sample, next_sample in zip(trajectory['full_state'][0:-2], trajectory['full_state'][1:]):
+        env.set_torch_state(curr_sample, next_sample) # tells the environment about current and next data
 
         env.render()
-        env.step(wp_state, wp_next_state, wp_control)
+        env.step()
 
 env.stop()
