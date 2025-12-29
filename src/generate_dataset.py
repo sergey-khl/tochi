@@ -1,7 +1,6 @@
 import warp as wp
 import warp.sim
 import warp.sim.render
-# import numpy as np
 import os
 from environment import Environment
 from real_cube_dataset import RealTossesDataset, pad_collate
@@ -30,13 +29,13 @@ dataset = RealTossesDataset(data_path)
 for i in range(len(dataset)):
     trajectory = dataset[i]
     for sample in trajectory['full_state']:
-        wp_state = env.model.state()
-        wp_control = env.model.control()
+        wp_state = env.state
+        
         env.set_torch_state(sample)
+        wp_next_state = env.state
+        wp_control = env.control
 
         env.render()
-        wp_next_state = env.model.state()
-        print(wp_state.joint_q, wp_next_state.joint_q)
         env.step(wp_state, wp_next_state, wp_control)
 
 env.stop()

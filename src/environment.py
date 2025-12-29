@@ -96,8 +96,6 @@ class Environment:
         self.integrator = self.init_integrator()
         self.renderer = self.init_renderer()
 
-        self.state = self.model.state()
-
     """
     cpu use USDRenderer and GPU use OpenGL
     """
@@ -154,6 +152,8 @@ class Environment:
 
         builder.add_shape_box(
             b,
+            pos=wp.vec3(0., METER_SCALE * 1.5, 0.),
+            rot=wp.quat(0., 0., 0., 1.),
             hx=METER_SCALE,
             hy=METER_SCALE,
             hz=METER_SCALE,
@@ -165,7 +165,6 @@ class Environment:
         )
 
         builder.add_joint_free(child=b, parent=-1)
-        builder.joint_q[1] = METER_SCALE * 1.5
 
         builder.set_ground_plane(
             ke=KE,
@@ -182,6 +181,8 @@ class Environment:
         self.dof_q_per_env = builder.joint_coord_count
         self.dof_qd_per_env = builder.joint_dof_count
         self.state_dim = self.dof_q_per_env + self.dof_qd_per_env
+        self.state = model.state()
+        self.control = model.control()
 
         return model
 
@@ -211,7 +212,7 @@ class Environment:
 
 
     """
-    render dynamics with opengl
+    render dynamics with opengl. dont use cpu its annoying
     """
     def render(self):
         if self.renderer is None:
@@ -286,6 +287,7 @@ class Environment:
         q, qd = self.torch_state_to_q_qd(torch_state)
         self.state.joint_q.assign(wp.from_torch(q))
         self.state.joint_qd.assign(wp.from_torch(qd))
+        # self.control.joint_act.assign(wp.array([1., 1., 1., 1., 1., 1., 1.]))
         # if eval_fk:
         #     wp.sim.eval_fk(self.model, self.state.joint_q, self.state.joint_qd, None, state)
 
