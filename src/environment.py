@@ -220,7 +220,7 @@ class Environment:
 
         with wp.ScopedTimer("render", color="yellow", active=self.enable_timers):
             self.renderer.begin_frame(self.sim_time)
-            render_state = (self.model.state())
+            render_state = (self.state)
 
             wp.sim.eval_fk(
                 self.model,
