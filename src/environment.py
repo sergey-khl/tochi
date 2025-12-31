@@ -328,10 +328,6 @@ class Environment:
             return wp.sim.render.SimRendererUsd(
                 self.model,
                 "cube_toss.usd",
-                # up_axis=self.up_axis,
-                # show_rigid_contact_points=True,
-                # contact_points_radius=1e-3,
-                # show_joints=True,
             )
         else:
             return wp.sim.render.SimRendererOpenGL(
