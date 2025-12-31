@@ -251,7 +251,7 @@ class Environment:
         self.model = self.init_model()
         self.integrator = self.init_integrator()
         self.renderer = self.init_renderer()
-        self.initialize_contacts(self.model)
+        # self.initialize_contacts(self.model)
 
     # Construct the ordered list of contact pairs
     def initialize_contacts(self, model: wp.sim.Model):
@@ -444,6 +444,8 @@ class Environment:
                     edge_sdf_iter=10,
                     iterate_mesh_vertices=True,
                 )
+                num_contacts = self.model.rigid_contact_count.numpy()[0]
+                print(num_contacts)
 
             with wp.ScopedTimer("simulation", color="red", active=self.enable_timers):
                 self.integrator.simulate(
@@ -538,7 +540,7 @@ class Environment:
         self.next_state.joint_qd.assign(wp.from_torch(qd))
         # self.control.joint_act.assign(wp.array([1., 1., 1., 1., 1., 1., 1.]))
         # if eval_fk:
-        #     wp.sim.eval_fk(self.model, self.state.joint_q, self.state.joint_qd, None, state)
+        wp.sim.eval_fk(self.model, self.state.joint_q, self.state.joint_qd, None, self.state)
 
 
     def reset_envs(self, env_ids: wp.array = None):
