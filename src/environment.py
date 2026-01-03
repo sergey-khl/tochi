@@ -243,7 +243,7 @@ class Environment:
         self.sim_substeps: int = 10 # featherstone
         self.sim_step = 0
         self.sim_time = 0.0
-        self.sim_dt = SAMPLING_DT
+        self.sim_dt = SAMPLING_DT / 10
         self.num_envs = 1
 
         self.enable_timers = enable_timers
