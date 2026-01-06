@@ -29,6 +29,7 @@ class Trainer:
     """
     def compute_loss(self):
         # step 1
+        pass
         
 
 
