@@ -24,45 +24,49 @@ class RealTossesDataset(Dataset):
 
     def z_up_to_y_up(self, state_tensor):
         """
-        position (3), quaternion (4), velocity (3), angular velocity (3), control (6),
-        convert z up tensor to y up 
+        state_tensor: position (3), quaternion (4), velocity (3), angular velocity (3), control (6),
+
+        we need to convert from contactnets left hand rule with z up to warp which is 
+        right hand rule with y up. This means we need to invert y, switch y and z, and rotate along x by -90
         """
         new_state = state_tensor.clone()
         
         # (x, y, z) -> (x, z, -y)
-        def rotate_vector_indices(new_state, start_idx):
-            new_state[start_idx + 1], new_state[start_idx + 2] = new_state[start_idx + 2], -new_state[start_idx + 1]
+        def y_z_flip(new_state, start_idx):
+            y = new_state[:, start_idx + 1].clone()
+            z = new_state[:, start_idx + 2].clone()
+            new_state[:, start_idx + 1] = z
+            new_state[:, start_idx + 2] = -y
 
-        # --- Apply Vector Rotations ---
         # Position
-        rotate_vector_indices(new_state, 0)
+        y_z_flip(new_state, 0)
         # Velocity
-        rotate_vector_indices(new_state, 7)
+        y_z_flip(new_state, 7)
         # Angular Velocity
-        rotate_vector_indices(new_state, 10)
+        y_z_flip(new_state, 10)
         # control stuff, should be just 0 for this dataset but change anyways
-        rotate_vector_indices(new_state, 13)
-        rotate_vector_indices(new_state, 16)
+        y_z_flip(new_state, 13)
+        y_z_flip(new_state, 16)
 
-        qw, qx, qy, qz = new_state[3], new_state[4], new_state[5], new_state[6]
+        # in contactnets they use quat convention of (w, x, y, z)
+        qw, qx, qy, qz = new_state[:, 3].clone(), new_state[:, 4].clone(), new_state[:, 5].clone(), new_state[:, 6].clone()
+        # same as before, flip y and z and invert y
         q_converted_x = qx
         q_converted_y = -qz
         q_converted_z = qy
         q_converted_w = qw
+
         rad = np.radians(-90) # find using right hand rule (curl da fingies)
-        
         corr_x = np.sin(rad / 2)
         corr_y = 0.0
         corr_z = 0.0
         corr_w = np.cos(rad / 2)
-        q_final_x = q_converted_w * corr_x + q_converted_x * corr_w + q_converted_y * corr_z - q_converted_z * corr_y
-        q_final_y = q_converted_w * corr_y - q_converted_x * corr_z + q_converted_y * corr_w + q_converted_z * corr_x
-        q_final_z = q_converted_w * corr_z + q_converted_x * corr_y - q_converted_y * corr_x + q_converted_z * corr_w
-        q_final_w = q_converted_w * corr_w - q_converted_x * corr_x - q_converted_y * corr_y - q_converted_z * corr_z
-        new_state[3] = q_final_x
-        new_state[4] = q_final_y
-        new_state[5] = q_final_z
-        new_state[6] = q_final_w
+        # quaternion rotation magic formula
+        new_state[:, 3] = q_converted_w * corr_x + q_converted_x * corr_w + q_converted_y * corr_z - q_converted_z * corr_y
+        new_state[:, 4] = q_converted_w * corr_y - q_converted_x * corr_z + q_converted_y * corr_w + q_converted_z * corr_x
+        new_state[:, 5] = q_converted_w * corr_z + q_converted_x * corr_y - q_converted_y * corr_x + q_converted_z * corr_w
+        new_state[:, 6] = q_converted_w * corr_w - q_converted_x * corr_x - q_converted_y * corr_y - q_converted_z * corr_z
+
         return new_state
 
     def __getitem__(self, idx):
@@ -73,10 +77,8 @@ class RealTossesDataset(Dataset):
         
         data_tensor = data_tensor.float()
 
-        for i in range(data_tensor.shape[0]):
-            data_tensor[i] = self.z_up_to_y_up(data_tensor[i])
+        data_tensor = self.z_up_to_y_up(data_tensor)
 
-        # Format: pos(3), quat(4), vel(3), ang_vel(3), control(6)
         sample = {
             'position':    data_tensor[..., 0:3],
             'quaternion':  data_tensor[..., 3:7],

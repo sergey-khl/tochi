@@ -16,35 +16,19 @@ KE = 1e4
 KD = 1e3
 KF = 50.0
 MU = 0.18
-RESTITUTION = 0.125 # in contact nets this is also hard coded to 0 in train.py. verify 
+RESTITUTION = 0.125 # TODO: in contact nets this is also hard coded to 0 in train.py. verify 
 SAMPLING_DT = 0.006756756756756757
 MASS = 0.37
 
-@torch.jit.script
-def quat_rotate(q, v):
-    shape = q.shape
-    q_w = q[:, -1]
-    q_vec = q[:, :3]
-    a = v * (2.0 * q_w ** 2 - 1.0).unsqueeze(-1)
-    b = torch.cross(q_vec, v, dim=-1) * q_w.unsqueeze(-1) * 2.0
-    c = q_vec * \
-        torch.bmm(q_vec.view(shape[0], 1, 3), v.view(
-            shape[0], 3, 1)).squeeze(-1) * 2.0
-    return a + b + c
-
 class Environment:
-    def __init__(self, device, initial_qs, initial_qds, enable_timers=True):
+    def __init__(self, device, enable_timers=True):
         self.device = device
         self.up_axis = "Y"
-
-        self.initial_qs = initial_qs
-        self.initial_qds = initial_qds
 
         self.sim_substeps: int = 10 # featherstone
         self.sim_step = 0
         self.sim_time = 0.0
         self.sim_dt = SAMPLING_DT / self.sim_substeps
-        # self.sim_dt = SAMPLING_DT
         self.num_envs = 1
 
         self.enable_timers = enable_timers
@@ -70,7 +54,7 @@ class Environment:
                 # show_rigid_contact_points=True,
                 contact_points_radius=1e-3,
                 # show_joints=True,
-                # scaling=5,
+                scaling=1.0,
             )
 
     """
@@ -154,18 +138,20 @@ class Environment:
                     edge_sdf_iter=10,
                     iterate_mesh_vertices=True,
                 )
-                # num_contacts = self.model.rigid_contact_count.numpy()[0]
-                # print(num_contacts)
+                num_contacts = self.model.rigid_contact_count.numpy()[0]
+
 
             with wp.ScopedTimer("simulation", color="red", active=self.enable_timers):
+                # I am pretty sure that self.next_state will just act as a buffer where
+                # what the integrator thinks the next state will be will be written into
                 self.integrator.simulate(
                     self.model, self.state, self.next_state, self.sim_dt, self.control
                 )
             self.sim_time += self.sim_dt
             self.sim_step += 1
-            # set next state as current state
-            self.state, self.next_state = self.next_state, self.state # TODO: understand this
-            # self.state = self.next_state
+            # set next state as current state. self.next_state will be wrong but its gonna be overwritten
+            # anyways so it doesent matter. Just make sure to pull self.state at function exit.
+            self.state, self.next_state = self.next_state, self.state
 
 
     """
@@ -178,8 +164,6 @@ class Environment:
         with wp.ScopedTimer("render", color="yellow", active=self.enable_timers):
             self.renderer.begin_frame(self.sim_time)
             render_state = (self.state)
-            print("render state")
-            print(render_state.joint_q, render_state.joint_qd)
 
             wp.sim.eval_fk(
                 self.model,
@@ -191,7 +175,6 @@ class Environment:
 
             # update cam position
             if self.device != "cpu":
-                # pass
                 cam_pos = wp.vec3(0., 3., 20.)
                 with wp.ScopedTimer("update_view_matrix", color=0x663300, active=self.enable_timers):
                     self.renderer.update_view_matrix(cam_pos=cam_pos)
@@ -216,19 +199,12 @@ class Environment:
         qdi = [7, 8, 9, 10, 11, 12]
         q = torch_state[qi].float()
         qd = torch_state[qdi].float()
-        x, quat = q[0:3], q[3:7]
-        # ang_vel_body, lin_vel = qd[0:3], qd[3:6]
-        # ang_vel_world = quat_rotate(quat.unsqueeze(0), ang_vel_body.unsqueeze(0)).squeeze(0)
-        # lin_vel_world = lin_vel + torch.cross(x, ang_vel_world)
-        # qd[0:3] = ang_vel_world
-        # qd[3:6] = lin_vel_world
         return q, qd
 
     def set_torch_state(
         self,
         curr_torch_state,
         next_torch_state,
-        eval_fk: bool = True,
     ):
         # format of the state in ContactNets is as follows:
         # position (3), quaternion (4), velocity (3), angular velocity (3), control (6)
@@ -238,28 +214,4 @@ class Environment:
         q, qd = self.torch_state_to_q_qd(next_torch_state)
         self.next_state.joint_q.assign(wp.from_torch(q))
         self.next_state.joint_qd.assign(wp.from_torch(qd))
-        # self.control.joint_act.assign(wp.array([1., 1., 1., 1., 1., 1., 1.]))
-        # if eval_fk:
-        wp.sim.eval_fk(self.model, self.state.joint_q, self.state.joint_qd, None, self.state)
-
-
-    def reset_envs(self, env_ids: wp.array = None):
-        """Reset environments where env_ids buffer indicates True. Resets all envs if env_ids is None."""
-        wp.launch(
-            reset_cube,
-            dim=self.num_envs,
-            inputs=[
-                env_ids,
-                self.dof_q_per_env,
-                self.dof_qd_per_env,
-                self.model.joint_q,
-                self.model.joint_qd,
-            ],
-            outputs=[
-                self.state.joint_q,
-                self.state.joint_qd,
-            ],
-            device=self.device,
-        )
-        self.seed += self.num_envs
 
