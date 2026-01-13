@@ -2,8 +2,8 @@ import warp as wp
 import warp.sim
 import warp.sim.render
 import os
-from environment import Environment
-from real_cube_dataset import RealTossesDataset, pad_collate
+from src.environment import Environment
+from src.real_cube_dataset import RealTossesDataset, pad_collate
 from torch.utils.data import DataLoader
 import torch
 import time

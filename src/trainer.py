@@ -10,6 +10,7 @@ class Trainer:
         self.G_bases = self.compute_G_bases(8)
 
         G_bases_expanded = self.G_bases.t().unsqueeze(0).repeat(self.interaction.contact_n(), 1, 1)
+        print(G_bases_expanded)
         self.G = tensor_utils.block_diag(G_bases_expanded)
 
 
