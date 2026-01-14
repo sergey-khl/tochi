@@ -7,11 +7,14 @@ import torch
 class Trainer:
     def __init__(self):
         # TODO: look at G_bases shape but probably don't need a lot of this
-        self.G_bases = self.compute_G_bases(8)
+        self.vertices = 8
+        self.cone_bases = 8
+        self.G_bases = self.compute_G_bases(self.cone_bases)
+        self.G = self.compute_G()
 
-        G_bases_expanded = self.G_bases.t().unsqueeze(0).repeat(self.interaction.contact_n(), 1, 1)
-        print(G_bases_expanded)
-        self.G = tensor_utils.block_diag(G_bases_expanded)
+        torch.set_printoptions(profile="full")
+        print(self.G)
+        print(self.G.shape)
 
 
     """
@@ -42,7 +45,11 @@ class Trainer:
 
         return bases
 
-    def compute_G(self) -> Tensor:
-        return self.G.unsqueeze(0).repeat(self.interaction.batch_n(), 1, 1)
+    def compute_G(self):
+        """
+        converts the bases into a block diagonal of shape (1, 16, 64)
+        """
+        block_diag = torch.block_diag(*[self.G_bases.T for _ in range(8)])
+        return block_diag.unsqueeze(0)
 
 
