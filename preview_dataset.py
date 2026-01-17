@@ -3,7 +3,7 @@ import warp.sim
 import warp.sim.render
 import os
 from src.environment import Environment
-from src.real_cube_dataset import RealTossesDataset, pad_collate
+from src.real_cube_dataset import RealCubeDataset, pad_collate
 from torch.utils.data import DataLoader
 import torch
 import time
@@ -16,7 +16,7 @@ device = wp.get_preferred_device()
 print(f"Running on: {device}")
 
 data_path = os.path.expanduser('~/projects/contact-nets/data/tosses_processed/')
-dataset = RealTossesDataset(data_path)
+dataset = RealCubeDataset(data_path)
 
 env = Environment(device)
 

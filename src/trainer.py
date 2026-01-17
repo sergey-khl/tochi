@@ -1,55 +1,68 @@
+from torch.utils.data import DataLoader
 import warp as wp
 import numpy as np
 import math
 import torch
+from dataclasses import dataclass
+
+from src.loss import SurrogateConfig3D
+
+@dataclass
+class Block3DTraining:
+    learn_normal: bool = True
+    learn_tangent: bool = True
+
+    # 'poly' or 'deepvertex' or 'deep'
+    net_type: str = 'poly'
+
+    surrogate_config: SurrogateConfig3D = SurrogateConfig3D(
+        w_comp_n               = 1.0,
+        w_comp_t               = 1.0,
+        w_match                = 0.1,
+        w_cone                 = 1.0,
+        w_penetration_slack    = 1.0,
+
+        w_penetration          = 0.0,
+        w_config_grad_normal   = 0.3,
+        w_config_grad_tangent  = 0.0,
+        w_config_grad_perp     = 0.3,
+        w_st_estimate_pen      = 0.0,
+        w_st_estimate_normal   = 0.0,
+        w_st_estimate_tangent  = 0.0,
+        w_tangent_jac_d2       = 0.0,
+        w_contact_threshold    = -0.0,
+
+        robust_sqrt            = True
+    )
+
+    elastic: float = False
+    device: str = 'cuda'
+    lr: float = 1e-4
+    scheduler_step_size: int = 30
+    scheduler_gamma: float = 1.0
+    wd: float = 1e-2
+    noise: float = 0.0
+    H: int = 256
+    k: int = 8
+
+    epochs: int = 100
+    batch: int = 1
 
 # TODO: cite contact
 class Trainer:
-    def __init__(self):
-        # TODO: look at G_bases shape but probably don't need a lot of this
-        self.vertices = 8
-        self.cone_bases = 8
-        self.G_bases = self.compute_G_bases(self.cone_bases)
-        self.G = self.compute_G()
+    def __init__(self, dataset):
+        wp.init()
 
-        torch.set_printoptions(profile="full")
-        print(self.G)
-        print(self.G.shape)
+        self.params = Block3DTraining
 
+        self.dataset = dataset
 
-    """
-    alrighty.  TODO
+    def train(self):
+        dataloader = DataLoader(self.dataset.train, batch_size=self.params.batch, shuffle=True)
 
-    step 1: need state (curr state/control and next state)
-    step 2: curr and next phi
-    step 3: curr and next jacobian (both normal and tangential)
-    step 4: curr gamma
-    step 5: curr and next mass matrix
-    step 6: curr and next force vectors
-    step 7: pad for normal, tangent and slack
-    ...
-    mathematical pain
-
-    """
-    def compute_loss(self):
-        # step 1
-        pass
-        
-
-
-    def compute_G_bases(self, bases_n):
-        bases = torch.zeros(bases_n, 2)
-        for i, angle in enumerate(np.linspace(0, 2 * math.pi * (1 - 1 / bases_n), bases_n)):
-            bases[i, 0] = math.cos(angle)
-            bases[i, 1] = math.sin(angle)
-
-        return bases
-
-    def compute_G(self):
-        """
-        converts the bases into a block diagonal of shape (1, 16, 64)
-        """
-        block_diag = torch.block_diag(*[self.G_bases.T for _ in range(8)])
-        return block_diag.unsqueeze(0)
-
+        for batch in dataloader:
+            print(batch)
+            break
+            # bad_loss = self.training_step(optimizer, batch[0], surpress_printing)
+            # if bad_loss: bad_losses += 1
 

@@ -1,22 +1,19 @@
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, TensorDataset
 import os
 from glob import glob
 import natsort
 import numpy as np
+import random
 
-class RealTossesDataset(Dataset):
-    def __init__(self, data_dir):
+class RealCubeDataset(Dataset):
+    def __init__(self, data_dir, device):
         self.data_dir = data_dir
         self.file_paths = glob(os.path.join(data_dir, '*.pt'))
         
         self.file_paths = natsort.natsorted(self.file_paths)
 
-        for path in self.file_paths:
-            data_tensor = torch.load(path)
-            data_tensor = data_tensor.squeeze(0)
-            
-            data_tensor = data_tensor.float()
+        self.device = device
 
 
     def __len__(self):
@@ -89,19 +86,75 @@ class RealTossesDataset(Dataset):
         }
 
         return sample
+    
+    def load(self, splits=[50,30,20], num_tosses=100, noise=0.4):
+        """
+        created paired datasets
+        the functions above are only used for previwing and this is for training.
+        Probably could make a more uniform implementation
+        but I want the same batches as cnets for easier debug
 
-def pad_collate(batch):
-    from torch.nn.utils.rnn import pad_sequence
-    
-    keys = batch[0].keys()
-    collated_batch = {}
-    for key in keys:
-        items = [d[key] for d in batch]
-        
-        collated_batch[key] = pad_sequence(items, batch_first=True, padding_value=0.0)
-        
-    # Add a mask to know which steps are padding
-    lengths = torch.tensor([d['full_state'].shape[0] for d in batch])
-    collated_batch['lengths'] = lengths
-    
-    return collated_batch
+        Args:
+            noise: how much Gaussian noise to add.
+        """
+        def process_run(data):
+            """ Turn time sequenced data into a batch of paired time steps.
+
+            Args:
+                data: step_n x (state_n + control_n) * entity_n.
+
+            Returns:
+                step_n - 1 x 2 x (state_n + control_n) * entity_n
+            """
+            n = data.shape[0]
+            batch = torch.zeros((n - 1, 2, data.shape[1]))
+
+            for i in range(n - 1):
+                batch[i, :, :] = torch.cat((data[i, :].unsqueeze(0),
+                                            data[i + 1, :].unsqueeze(0)))
+            return batch.to(self.device)
+
+        def load_runs(idxs):
+            datas = []
+
+            try:
+                for idx in idxs:
+                    path = self.file_paths[idx]
+                    data = torch.load(path).to(self.device)
+                    data = data.squeeze(0).float()
+
+                    data = self.z_up_to_y_up(data)
+
+                    data = data + torch.randn(data.shape, device=self.device) * noise
+                    datas.append(data)
+            except Exception as err:
+                print(f'Could not load data')
+                print(err)
+
+            return datas
+
+        runs = list(range(self.__len__()))
+        random.shuffle(runs)
+        if num_tosses is not None:
+            runs = runs[:num_tosses]
+
+        split_points = np.cumsum(splits)
+        split_points = [int(np.floor(split * 0.01 * len(runs))) for split in split_points]
+
+        train_data = runs[0:split_points[0]]
+        valid_data = runs[split_points[0]:split_points[1]]
+        test_data = runs[split_points[1]:]
+
+        self.train_runs = load_runs(train_data)
+        self.valid_runs = load_runs(valid_data)
+        self.test_runs  = load_runs(test_data)
+
+
+        train_processed = list(map(process_run, self.train_runs))
+        valid_processed = list(map(process_run, self.valid_runs))
+        test_processed  = list(map(process_run, self.test_runs))
+
+        self.train = TensorDataset(torch.cat(train_processed))
+        self.valid = TensorDataset(torch.cat(valid_processed))
+        self.test = TensorDataset(torch.cat(test_processed))
+
