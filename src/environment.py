@@ -6,29 +6,19 @@ from warp.sim.collide import get_box_vertex
 
 import torch
 
-# see https://github.com/DAIRLab/contact-nets/blob/main/README.md
-# METER_SCALE = 0.0524 # this is half box width
-METER_SCALE = 1.0 # this is half box width
-
-# see https://github.com/DAIRLab/contact-nets/blob/main/data/params_processed/experiment.json
-# To get the above ^^^ use these values
-KE = 1e4
-KD = 1e3
-KF = 50.0
-MU = 0.18
-RESTITUTION = 0.125 # TODO: in contact nets this is also hard coded to 0 in train.py. verify 
-SAMPLING_DT = 0.006756756756756757
-MASS = 0.37
+from src.block_config import load_config
 
 class Environment:
     def __init__(self, device, enable_timers=True):
         self.device = device
         self.up_axis = "Y"
 
-        self.sim_substeps: int = 10 # featherstone
+        self.params = load_config().environment_config
+
+        self.sim_substeps: int = self.params.sim_substeps # featherstone
         self.sim_step = 0
         self.sim_time = 0.0
-        self.sim_dt = SAMPLING_DT / self.sim_substeps
+        self.sim_dt = self.params.sampling_dt / self.sim_substeps
         self.num_envs = 1
 
         self.enable_timers = enable_timers
@@ -85,30 +75,30 @@ class Environment:
 
         b = builder.add_body(name="cube")
 
-        box_width = METER_SCALE * 2.0
+        box_width = self.params.meter_scale * 2.0
         volume = box_width ** 3
-        density = MASS / volume
+        density = self.params.mass / volume
 
         builder.add_shape_box(
             b,
-            hx=METER_SCALE,
-            hy=METER_SCALE,
-            hz=METER_SCALE,
+            hx=self.params.meter_scale,
+            hy=self.params.meter_scale,
+            hz=self.params.meter_scale,
             density=density,
-            ke=KE,
-            kd=KD,
-            kf=KF,
-            mu=MU,
+            ke=self.params.ke,
+            kd=self.params.kd,
+            kf=self.params.kf,
+            mu=self.params.mu,
         )
 
         builder.add_joint_free(child=b, parent=-1)
 
         builder.set_ground_plane(
-            ke=KE,
-            kd=KD,
-            kf=KF,
-            mu=MU,
-            restitution=RESTITUTION
+            ke=self.params.ke,
+            kd=self.params.kd,
+            kf=self.params.kf,
+            mu=self.params.mu,
+            restitution=self.params.restitution
         )
 
         model = builder.finalize(self.device)

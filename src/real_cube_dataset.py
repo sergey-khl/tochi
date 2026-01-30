@@ -87,7 +87,7 @@ class RealCubeDataset(Dataset):
 
         return sample
     
-    def load(self, splits=[50,30,20], num_tosses=100, noise=0.4):
+    def load(self, splits=[50,30,20], num_tosses=100, noise=0.0):
         """
         created paired datasets
         the functions above are only used for previwing and this is for training.

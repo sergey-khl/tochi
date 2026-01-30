@@ -4,27 +4,6 @@ import math
 import torch
 from dataclasses import dataclass
 
-@dataclass
-class SurrogateConfig3D:
-    w_comp_n:               float = 0.0
-    w_comp_t:               float = 0.0
-    w_match:                float = 0.0
-    w_cone:                 float = 0.0
-    w_penetration_slack:    float = 0.0
-
-    w_penetration:          float = 0.0
-    w_config_grad_normal:   float = 0.0
-    w_config_grad_tangent:  float = 0.0
-    w_config_grad_perp:     float = 0.0
-    w_st_estimate_pen:      float = 0.0
-    w_st_estimate_normal:   float = 0.0
-    w_st_estimate_tangent:  float = 0.0
-    w_tangent_jac_d2:       float = 0.0
-
-    w_contact_threshold:    float = -1.0
-
-    robust_sqrt:            bool = False
-
 # TODO: cite contact
 class Loss:
     def __init__(self):
@@ -35,7 +14,6 @@ class Loss:
         self.G = self.compute_G()
 
         # torch.set_printoptions(profile="full")
-
 
     """
     alrighty.  TODO
