@@ -35,7 +35,10 @@ class Trainer:
 
                 self.optimizer.zero_grad()
                 out_grads = self.contact_net.phi_net.forward(prev_config)
-                out_grads.backward(torch.ones_like(out_grads))
+                print(out_grads)
+                out = out_grads.backward(torch.ones_like(out_grads))
+                print(out)
+                assert False
 
                 self.optimizer.step()
 

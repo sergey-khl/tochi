@@ -43,6 +43,13 @@ def transform_and_project_kernel(
         # Inner loop for projections
         for p_idx in range(num_projections):
             dist = project_on_axis(v_world, projections[p_idx])
+            # wp.printf("body %.2f %.2f %.2f\n", v_body[0], v_body[1], v_body[2])
+            # wp.printf("point %.2f %.2f %.2f\n", p[0], p[1], p[2])
+            # wp.printf("quat %.2f %.2f %.2f %.2f\n", q[0], q[1], q[2], q[3])
+            # wp.printf("world %.2f %.2f %.2f\n", v_world[0], v_world[1], v_world[2])
+            # wp.printf("proj %.2f %.2f %.2f\n", projections[p_idx][0], projections[p_idx][1], projections[p_idx][2])
+            # wp.printf("dist %.2f\n", dist)
+            # wp.printf("------------------------\n\n")
             
             # Calculate flat index for output
             out_idx = v_idx * num_projections + p_idx 
@@ -72,6 +79,9 @@ class WarpWrapper(torch.autograd.Function):
         out_torch = torch.zeros((ctx.batch_n, num_contacts), device=configurations.device)
         ctx.phi_out = wp.from_torch(out_torch)
 
+        print(points)
+        print(projections)
+
         # allocate input
         ctx.configurations = wp.from_torch(configurations)
         ctx.points_wp = wp.from_torch(points, dtype=wp.vec3, requires_grad=True)
@@ -89,6 +99,7 @@ class WarpWrapper(torch.autograd.Function):
     def backward(ctx, phi_out):
         ctx.phi_out.grad = wp.from_torch(phi_out)
 
+
         wp.launch(
             kernel=transform_and_project_kernel,
             dim=ctx.batch_n,
@@ -99,6 +110,12 @@ class WarpWrapper(torch.autograd.Function):
             adjoint=True,
         )
 
+        points = wp.to_torch(ctx.points_wp.grad)
+        projections = wp.to_torch(ctx.projections_wp.grad)
+
+        print(points)
+        print(projections)
+
         # return adjoint w.r.t. inputs
         # TODO: wrong
-        return (wp.to_torch(ctx.points_wp.grad), wp.to_torch(ctx.projections_wp.grad), None)
+        return (points, projections, None)

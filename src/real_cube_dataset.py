@@ -47,11 +47,6 @@ class RealCubeDataset(Dataset):
 
         # in contactnets they use quat convention of (w, x, y, z)
         qw, qx, qy, qz = new_state[:, 3].clone(), new_state[:, 4].clone(), new_state[:, 5].clone(), new_state[:, 6].clone()
-        # same as before, flip y and z and invert y
-        q_converted_x = qx
-        q_converted_y = -qz
-        q_converted_z = qy
-        q_converted_w = qw
 
         rad = np.radians(-90) # find using right hand rule (curl da fingies)
         corr_x = np.sin(rad / 2)
@@ -59,10 +54,10 @@ class RealCubeDataset(Dataset):
         corr_z = 0.0
         corr_w = np.cos(rad / 2)
         # quaternion rotation magic formula
-        new_state[:, 3] = q_converted_w * corr_x + q_converted_x * corr_w + q_converted_y * corr_z - q_converted_z * corr_y
-        new_state[:, 4] = q_converted_w * corr_y - q_converted_x * corr_z + q_converted_y * corr_w + q_converted_z * corr_x
-        new_state[:, 5] = q_converted_w * corr_z + q_converted_x * corr_y - q_converted_y * corr_x + q_converted_z * corr_w
-        new_state[:, 6] = q_converted_w * corr_w - q_converted_x * corr_x - q_converted_y * corr_y - q_converted_z * corr_z
+        new_state[:, 3] = qw * corr_x + qx * corr_w + qy * corr_z - qz * corr_y
+        new_state[:, 4] = qw * corr_y - qx * corr_z + qy * corr_w + qz * corr_x
+        new_state[:, 5] = qw * corr_z + qx * corr_y - qy * corr_x + qz * corr_w
+        new_state[:, 6] = qw * corr_w - qx * corr_x - qy * corr_y - qz * corr_z
 
         return new_state
 
